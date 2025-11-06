@@ -6,7 +6,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     MICROWAKEWORD_WORKDIR=/workspace \
-    PIPER_HOME=/opt/piper-sample-generator
+    MICROWAKEWORD_VOICE_DIR=/opt/piper-voices \
+    MICROWAKEWORD_VOICE_MODEL_NAME=en_US-lessac-medium.onnx \
+    MICROWAKEWORD_VOICE_URL="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx?download=true" \
+    MICROWAKEWORD_VOICE_CONFIG_URL="https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json?download=true"
+
+ENV MICROWAKEWORD_VOICE_MODEL="${MICROWAKEWORD_VOICE_DIR}/${MICROWAKEWORD_VOICE_MODEL_NAME}" \
+    MICROWAKEWORD_VOICE_CONFIG="${MICROWAKEWORD_VOICE_MODEL}.json"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -15,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip \
         libsndfile1 \
         ffmpeg \
+    espeak-ng \
         libglib2.0-0 \
         libsm6 \
         libxext6 \
@@ -28,16 +35,15 @@ COPY . /app
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.4.1+cpu torchaudio==2.4.1+cpu \
+    && pip install --no-cache-dir onnxruntime==1.18.1 \
+    && pip install --no-cache-dir piper-tts==1.2.0 \
     && pip install --no-cache-dir piper-phonemize-cross==1.2.1 \
     && pip install --no-cache-dir -e . \
     && pip install --no-cache-dir 'git+https://github.com/whatsnowplaying/audio-metadata@d4ebb238e6a401bb1a5aaaac60c9e2b3cb30929f'
 
-RUN git clone https://github.com/rhasspy/piper-sample-generator ${PIPER_HOME} \
-    && mkdir -p ${PIPER_HOME}/models \
-    && wget -O ${PIPER_HOME}/models/en_US-libritts_r-medium.pt \
-        https://github.com/rhasspy/piper-sample-generator/releases/download/v2.0.0/en_US-libritts_r-medium.pt
-
-RUN mkdir -p ${MICROWAKEWORD_WORKDIR} /app/serve
+RUN mkdir -p ${MICROWAKEWORD_WORKDIR} /app/serve ${MICROWAKEWORD_VOICE_DIR} \
+    && wget -O ${MICROWAKEWORD_VOICE_MODEL} ${MICROWAKEWORD_VOICE_URL} \
+    && wget -O ${MICROWAKEWORD_VOICE_CONFIG} ${MICROWAKEWORD_VOICE_CONFIG_URL}
 
 EXPOSE 8080
 

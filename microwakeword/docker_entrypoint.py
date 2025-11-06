@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import itertools
 import logging
 import os
 import re
@@ -12,15 +13,17 @@ import subprocess
 import sys
 import threading
 import time
+import wave
+import zipfile
 from datetime import timedelta
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-import zipfile
 
 import yaml
 
 from mmap_ninja.ragged import RaggedMmap  # type: ignore[import-not-found]
+from piper import PiperVoice  # type: ignore[import-not-found]
 
 from microwakeword.audio.augmentation import Augmentation
 from microwakeword.audio.clips import Clips
@@ -39,7 +42,20 @@ DEFAULT_SAMPLE_COUNT = int(os.getenv("MICROWAKEWORD_SAMPLE_COUNT", "400"))
 DEFAULT_BATCH_SIZE = int(os.getenv("MICROWAKEWORD_SAMPLE_BATCH", "50"))
 DEFAULT_TRAINING_STEPS = int(os.getenv("MICROWAKEWORD_TRAINING_STEPS", "10000"))
 DEFAULT_WORKDIR = Path(os.getenv("MICROWAKEWORD_WORKDIR", "/workspace"))
-PIPER_HOME = Path(os.getenv("PIPER_HOME", "/opt/piper-sample-generator"))
+DEFAULT_VOICE_MODEL = Path(
+    os.getenv("MICROWAKEWORD_VOICE_MODEL", "/opt/piper-voices/en_US-lessac-medium.onnx")
+)
+DEFAULT_VOICE_CONFIG = Path(
+    os.getenv("MICROWAKEWORD_VOICE_CONFIG", "/opt/piper-voices/en_US-lessac-medium.onnx.json")
+)
+DEFAULT_VOICE_URL = os.getenv(
+    "MICROWAKEWORD_VOICE_URL",
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx?download=true",
+)
+DEFAULT_VOICE_CONFIG_URL = os.getenv(
+    "MICROWAKEWORD_VOICE_CONFIG_URL",
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json?download=true",
+)
 
 
 class UTCFormatter(logging.Formatter):
@@ -66,39 +82,76 @@ def slugify_phrase(wakeword: str) -> str:
     return slug or "wakeword"
 
 
-def run_command(command: list[str], *, cwd: Path | None = None) -> None:
-    logging.debug("Running command: %s", " ".join(command))
-    subprocess.run(command, cwd=cwd, check=True)
+def ensure_voice_assets() -> tuple[Path, Path]:
+    model_path = DEFAULT_VOICE_MODEL
+    config_path = DEFAULT_VOICE_CONFIG
+
+    if not model_path.exists():
+        logging.info("downloading piper voice model from %s", DEFAULT_VOICE_URL)
+        download_file(DEFAULT_VOICE_URL, model_path)
+
+    if not config_path.exists():
+        logging.info("downloading piper voice config from %s", DEFAULT_VOICE_CONFIG_URL)
+        download_file(DEFAULT_VOICE_CONFIG_URL, config_path)
+
+    return model_path, config_path
+
+
+def load_voice() -> PiperVoice:
+    model_path, config_path = ensure_voice_assets()
+    logging.info("loading Piper voice from %s", model_path)
+    return PiperVoice.load(str(model_path), config_path=str(config_path), use_cuda=False)
+
+
+def synthesize_wakeword_samples(
+    *, voice: PiperVoice, wakeword: str, samples_dir: Path, max_samples: int
+) -> None:
+    logging.info(
+        "generating %d synthetic samples for '%s' using Piper voice", max_samples, wakeword
+    )
+
+    length_scales = [0.85, 0.95, 1.0, 1.1, 1.2]
+    noise_scales = [0.55, 0.65, 0.75]
+    noise_ws = [0.7, 0.8, 0.9]
+    phrases = [wakeword, f"{wakeword}.", f"{wakeword}!", wakeword.title()]
+
+    variation_iter = itertools.cycle(
+        itertools.product(length_scales, noise_scales, noise_ws)
+    )
+    phrase_iter = itertools.cycle(phrases)
+
+    for index in range(max_samples):
+        length_scale, noise_scale, noise_w = next(variation_iter)
+        phrase = next(phrase_iter)
+        output_path = samples_dir / f"{index}.wav"
+
+        with wave.open(str(output_path), "wb") as wav_file:
+            voice.synthesize(
+                phrase,
+                wav_file,
+                length_scale=length_scale,
+                noise_scale=noise_scale,
+                noise_w=noise_w,
+            )
 
 
 def ensure_wakeword_samples(
     *, wakeword: str, samples_dir: Path, max_samples: int, batch_size: int
 ) -> None:
+    _ = batch_size  # retained for CLI compatibility
+
     samples_dir.mkdir(parents=True, exist_ok=True)
     if list(samples_dir.glob("*.wav")):
         logging.info("wake word samples already exist; skipping synthesis")
         return
 
-    if not PIPER_HOME.exists():
-        raise FileNotFoundError(
-            f"Missing piper-sample-generator at {PIPER_HOME}. Container build may be incomplete."
-        )
-
-    logging.info(
-        "generating %d synthetic samples for '%s' using piper", max_samples, wakeword
+    voice = load_voice()
+    synthesize_wakeword_samples(
+        voice=voice,
+        wakeword=wakeword,
+        samples_dir=samples_dir,
+        max_samples=max_samples,
     )
-    cmd = [
-        sys.executable,
-        "generate_samples.py",
-        wakeword,
-        "--max-samples",
-        str(max_samples),
-        "--batch-size",
-        str(batch_size),
-        "--output-dir",
-        str(samples_dir),
-    ]
-    run_command(cmd, cwd=PIPER_HOME)
 
 
 def download_file(url: str, destination: Path) -> None:
@@ -373,7 +426,7 @@ def main() -> None:
         "--sample-batch-size",
         type=int,
         default=DEFAULT_BATCH_SIZE,
-        help="Sample generation batch size",
+        help="Sample generation batch size (unused placeholder for compatibility)",
     )
     parser.add_argument(
         "--training-steps",
