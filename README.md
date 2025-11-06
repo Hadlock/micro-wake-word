@@ -2,6 +2,12 @@
 
 microWakeWord is an open-source wakeword library for detecting custom wake words on low power devices. It produces models that are suitable for using [TensorFlow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers). The models are suitable for real-world usage with low false accept and false reject rates.
 
+## TL;DR do this in docker locally
+- Build the image with `docker build . -t wakeword`. Docker is the easy button here, even if the CPU-only run is painfully slow.
+- Kick off training with `docker run -it --rm -p 8080:8080 wakeword -c "hey eyeball"`. Swap the quoted phrase for your wake word; the container logs will show `starting training for 'hey eyeball' this will take a while` and periodic `still training...` updates.
+- Expect it to chug away for hours (or days) on a CPU, but it will finish eventually and drop the quantized model at `http://0.0.0.0:8080/hey_eyeball.tflite`. Map a volume with `-v $PWD/models:/workspace` if you want to keep the outputs between runs.
+- Watch the UTC timestamped logs for the final line announcing the download URL and total training time.
+
 [![A library from the Open Home Foundation](https://www.openhomefoundation.org/badges/ohf-library.png)](https://www.openhomefoundation.org/)
 
 **microWakeword is currently available as an early release. Training new models is intended for advanced users. Training a model that works well is still very difficult, as it typically requires experimentation with hyperparameters and sample generation settings. Please share any insights you find for training a good model!**
