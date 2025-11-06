@@ -33,13 +33,23 @@ WORKDIR /app
 
 COPY . /app
 
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.4.1+cpu torchaudio==2.4.1+cpu \
-    && pip install --no-cache-dir onnxruntime==1.18.1 \
-    && pip install --no-cache-dir piper-tts==1.2.0 \
-    && pip install --no-cache-dir piper-phonemize-cross==1.2.1 \
-    && pip install --no-cache-dir -e . \
-    && pip install --no-cache-dir 'git+https://github.com/whatsnowplaying/audio-metadata@d4ebb238e6a401bb1a5aaaac60c9e2b3cb30929f'
+# Install dependencies in order:
+# 1. PyTorch CPU (brings compatible numpy)
+# 2. TensorFlow (will upgrade to numpy 2.x as needed by tf>=2.16)
+# 3. onnxruntime 1.19+ (supports numpy 2.x)
+# 4. Piper dependencies
+# 5. microwakeword itself (last, so tensorflow requirement is already satisfied)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        torch==2.4.1+cpu \
+        torchaudio==2.4.1+cpu && \
+    pip install --no-cache-dir \
+        'onnxruntime>=1.19.0' \
+        'piper-tts==1.2.0' \
+        'piper-phonemize-cross==1.2.1' \
+        'git+https://github.com/whatsnowplaying/audio-metadata@d4ebb238e6a401bb1a5aaaac60c9e2b3cb30929f' && \
+    pip install --no-cache-dir -e .
 
 RUN mkdir -p ${MICROWAKEWORD_WORKDIR} /app/serve ${MICROWAKEWORD_VOICE_DIR} \
     && wget -O ${MICROWAKEWORD_VOICE_MODEL} ${MICROWAKEWORD_VOICE_URL} \
