@@ -20,6 +20,9 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+# Force datasets library to use soundfile backend for audio decoding
+os.environ["DATASETS_AUDIO_BACKEND"] = "soundfile"
+
 import yaml
 
 from mmap_ninja.ragged import RaggedMmap  # type: ignore[import-not-found]
