@@ -50,6 +50,10 @@ DEFAULT_SAMPLE_COUNT = int(os.getenv("MICROWAKEWORD_SAMPLE_COUNT", "400"))
 DEFAULT_BATCH_SIZE = int(os.getenv("MICROWAKEWORD_SAMPLE_BATCH", "50"))
 DEFAULT_TRAINING_STEPS = int(os.getenv("MICROWAKEWORD_TRAINING_STEPS", "10000"))
 DEFAULT_WORKDIR = Path(os.getenv("MICROWAKEWORD_WORKDIR", "/workspace"))
+# Allow overriding the training batch size to avoid OOMs on low-memory machines.
+# Default is conservative (32). Set MICROWAKEWORD_TRAIN_BATCH when running the
+# container to control this without changing code.
+DEFAULT_TRAIN_BATCH = int(os.getenv("MICROWAKEWORD_TRAIN_BATCH", "32"))
 DEFAULT_VOICE_MODEL = Path(
     os.getenv("MICROWAKEWORD_VOICE_MODEL", "/opt/piper-voices/en_US-lessac-medium.onnx")
 )
@@ -316,7 +320,8 @@ def write_training_config(
         "positive_class_weight": [1],
         "negative_class_weight": [20],
         "learning_rates": [0.001],
-        "batch_size": 128,
+    # Batch size for training; reduce to lower memory usage on constrained hosts.
+    "batch_size": DEFAULT_TRAIN_BATCH,
         "time_mask_max_size": [0],
         "time_mask_count": [0],
         "freq_mask_max_size": [0],
