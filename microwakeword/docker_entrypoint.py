@@ -20,13 +20,18 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-# Force datasets library to use soundfile backend for audio decoding
-os.environ["DATASETS_AUDIO_BACKEND"] = "soundfile"
-
 import yaml
 
 from mmap_ninja.ragged import RaggedMmap  # type: ignore[import-not-found]
 from piper import PiperVoice  # type: ignore[import-not-found]
+
+# Import and verify soundfile is available before datasets tries to use it
+try:
+    import soundfile as sf
+    logging.info(f"soundfile {sf.__version__} loaded successfully")
+except ImportError as e:
+    logging.error(f"Failed to import soundfile: {e}")
+    raise
 
 from microwakeword.audio.augmentation import Augmentation
 from microwakeword.audio.clips import Clips

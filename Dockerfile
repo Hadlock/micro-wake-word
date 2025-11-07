@@ -37,7 +37,7 @@ COPY . /app
 # 1. PyTorch CPU (brings compatible numpy)
 # 2. TensorFlow (will upgrade to numpy 2.x as needed by tf>=2.16)
 # 3. onnxruntime 1.19+ (supports numpy 2.x)
-# 4. Piper dependencies + soundfile for audio decoding (used by datasets library)
+# 4. Piper dependencies + datasets[audio] extra for complete audio support
 # 5. microwakeword itself (last, so tensorflow requirement is already satisfied)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
@@ -49,7 +49,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
         'piper-tts==1.2.0' \
         'piper-phonemize-cross==1.2.1' \
         'git+https://github.com/whatsnowplaying/audio-metadata@d4ebb238e6a401bb1a5aaaac60c9e2b3cb30929f' \
-        'soundfile' && \
+        'datasets[audio]' && \
     pip install --no-cache-dir -e .
 
 RUN mkdir -p ${MICROWAKEWORD_WORKDIR} /app/serve ${MICROWAKEWORD_VOICE_DIR} \
