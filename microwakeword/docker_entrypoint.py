@@ -176,11 +176,12 @@ def ensure_negative_datasets(base_dir: Path) -> None:
         url = NEGATIVE_DATASET_ROOT + archive
         archive_path = base_dir / archive
         if not archive_path.exists():
-            logging.info("downloading %s", archive)
+            logging.info("downloading negative dataset '%s' (this may take a while)", folder)
             download_file(url, archive_path)
-        logging.info("extracting %s", archive)
+        logging.info("extracting negative dataset '%s' (this may take a while)", folder)
         with zipfile.ZipFile(archive_path, "r") as zip_file:
             zip_file.extractall(base_dir)
+        logging.info("completed extraction of '%s'", folder)
 
 
 def generate_positive_feature_sets(samples_dir: Path, features_dir: Path) -> None:
