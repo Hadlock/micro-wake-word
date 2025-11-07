@@ -10,7 +10,7 @@ microWakeWord is an open-source wakeword library for detecting custom wake words
 
 ### TL;DR
 
-- Build the image with `docker build . -t wakeword`. Docker is the easy button here, even if the CPU-only run is painfully slow.
+- Build the image with `docker build . -t wakeword`. Docker is the easy button here, even if the CPU-only run is painfully slow. About 22 minutes on a 12th gen i5 with 2gb ram and 50gb disk
 - Kick off training with `docker run -it --rm -p 8080:8080 wakeword -c "hey eyeball"`. Swap the quoted phrase for your wake word; the container logs will show `starting training for 'hey eyeball' this will take a while` and periodic `still training...` updates.
 - Expect it to chug away for hours (or days) on a CPU, but it will finish eventually and drop the quantized model at `http://0.0.0.0:8080/hey_eyeball.tflite`. Map a volume with `-v $PWD/models:/workspace` if you want to keep the outputs between runs.
 - Watch the UTC timestamped logs for the final line announcing the download URL and total training time.
