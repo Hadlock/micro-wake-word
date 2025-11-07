@@ -56,7 +56,8 @@ class SpectrogramGeneration:
         if self.augmenter is not None:
             clip = self.augmenter.augment_clip(clip)
 
-        return generate_features_for_clip(clip, self.step_ms)
+        # Use TensorFlow backend instead of C++ pymicro-features for better compatibility
+        return generate_features_for_clip(clip, self.step_ms, use_c=False)
 
     def spectrogram_generator(self, random=False, max_clips=None, **kwargs):
         """A Python generator that retrieves (augmented) spectrograms.
