@@ -59,7 +59,7 @@ def validate_nonstreaming(config, data_processor, model, test_set):
     result = model.evaluate(
         testing_fingerprints,
         testing_ground_truth,
-        batch_size=1024,
+        batch_size=256,
         return_dict=True,
         verbose=0,
     )
@@ -97,7 +97,7 @@ def validate_nonstreaming(config, data_processor, model, test_set):
             ambient_predictions = model.evaluate(
                 ambient_testing_fingerprints,
                 ambient_testing_ground_truth,
-                batch_size=1024,
+                batch_size=256,
                 return_dict=True,
                 verbose=0,
             )
