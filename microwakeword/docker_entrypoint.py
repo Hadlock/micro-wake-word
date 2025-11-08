@@ -51,9 +51,9 @@ DEFAULT_BATCH_SIZE = int(os.getenv("MICROWAKEWORD_SAMPLE_BATCH", "50"))
 DEFAULT_TRAINING_STEPS = int(os.getenv("MICROWAKEWORD_TRAINING_STEPS", "10000"))
 DEFAULT_WORKDIR = Path(os.getenv("MICROWAKEWORD_WORKDIR", "/workspace"))
 # Allow overriding the training batch size to avoid OOMs on low-memory machines.
-# Default is very conservative (16) for systems with ~10GB RAM. Set MICROWAKEWORD_TRAIN_BATCH
+# Default is 256 for systems with adequate RAM. Set MICROWAKEWORD_TRAIN_BATCH
 # when running the container to control this without changing code.
-DEFAULT_TRAIN_BATCH = int(os.getenv("MICROWAKEWORD_TRAIN_BATCH", "16"))
+DEFAULT_TRAIN_BATCH = int(os.getenv("MICROWAKEWORD_TRAIN_BATCH", "256"))
 DEFAULT_VOICE_MODEL = Path(
     os.getenv("MICROWAKEWORD_VOICE_MODEL", "/opt/piper-voices/en_US-lessac-medium.onnx")
 )
